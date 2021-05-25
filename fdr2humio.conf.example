@@ -1,0 +1,16 @@
+# The fdr2humio script uses boto3 to communicate with AWS, use these environment variables to
+# override the auth credentials as needed.
+# NOTE: the default region must match the SQS queue region
+AWS_ACCESS_KEY_ID=ABCDEFGHIJKLMNOP
+AWS_SECRET_ACCESS_KEY=aBcDeFgHiJkLmN/123456789abcdefghijk123456789
+AWS_DEFAULT_REGION=us-west-3
+
+# These are the main variables controlling how fdr2humio connects and must always be set
+F2H_SQS_URL=https://sqs.us-west-3.amazonaws.com/1234567890/your-fdr-ident-12345-1234567890
+F2H_S3_BUCKET=your-fdr-ident-12345-1234567890
+F2H_HUMIO_URL=https://cloud.humio.com/
+F2H_HUMIO_TOKEN=11111111-2222-aaaa-bbbb-333333333333
+
+# And do we want the debug output?
+# WARNING: debug output is extremely verbose
+F2H_DEBUG=false
