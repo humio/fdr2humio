@@ -1,16 +1,19 @@
 import sys
-import datetime
 import tempfile
-import gzip
-import mmap
-import time
+import logging
 import os
 import json
-import shutil
 import urllib.parse
-import sqlite3
+import argparse
 import urllib3
 import boto3
+import datetime
+
+logging.basicConfig(
+    format="%(asctime)s %(levelname)-8s %(message)s",
+    level=logging.INFO,
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 
 def humio_url(args):
@@ -20,27 +23,11 @@ def humio_url(args):
 
 def humio_headers(args):
     """Headers for posting RAW gzipped data"""
+    # TODO: this assumes the files are always gzipped
     return {
         "Content-Encoding": "gzip",
         "Authorization": "Bearer " + args["humio-token"],
     }
-
-
-def log(message, level="INFO"):
-    """A cheap little log line printer"""
-    print("%s [%s] %s" % (datetime.datetime.now(), level, message))
-
-
-def is_compressed(filename):
-    """Detects if a file at a specific path is gzip compressed."""
-    fileSize = os.path.getsize(filename)
-    if fileSize == 0:
-        return False
-    try:
-        gzip.GzipFile(filename=filename).peek(max(256, fileSize))
-        return True
-    except OSError:
-        return False
 
 
 def is_suitable_tempdir(path):
@@ -50,7 +37,7 @@ def is_suitable_tempdir(path):
     raise argparse.ArgumentTypeError(msg)
 
 
-def not_implemented(token):
+def not_implemented():
     msg = "This argument is not currently supported."
     raise argparse.ArgumentTypeError(msg)
 
@@ -71,7 +58,8 @@ def setup_args():
     import argparse
 
     parser = argparse.ArgumentParser(
-        description="This script is used to collect Falcon logs from S3, and send them to a Humio instance."
+        description="This script is used to collect Falcon logs from S3, and send them to a Humio \
+instance."
     )
 
     # Details for the source bucket and access
@@ -151,13 +139,15 @@ def check_valid(args, payload, s3):
     try:
         obj = s3.head_object(Bucket=args["bucket"], Key=success_path)
     except Exception as e:
-        if args["debug"]:
-            log(str(e), level="DEBUG")
+        logging.debug(str(e))
         return False
     return True
 
 
 def post_files_to_humio(args, payload, s3, http):
+    # Track details of what was sent
+    processed = {"files": 0, "bytes": 0}
+
     # Download from S3 into temp dir
     with tempfile.TemporaryDirectory(dir=args["tmpdir"]) as tmpdirname:
 
@@ -173,6 +163,8 @@ def post_files_to_humio(args, payload, s3, http):
             # TODO: Check the checksum
 
             # TODO: check the size!
+            processed["files"] += 1
+            processed["bytes"] += os.path.getsize(local_file_path)
 
             # POST to Humio HEC Raw w/ compression
             with open(local_file_path, "rb") as f:
@@ -183,11 +175,12 @@ def post_files_to_humio(args, payload, s3, http):
                     headers=humio_headers(args),
                 )
 
+                # TODO: Better error handling needed here as we may partially process a message
                 if r.status != 200:
                     return False
 
     # Everything sent as expected
-    return True
+    return processed
 
 
 if __name__ == "__main__":
@@ -197,6 +190,8 @@ if __name__ == "__main__":
     # Echo to stdout so we can see the args in use if debug
     if args["debug"]:
         pp_args(args)
+        # Turn on the debugging log level
+        logging.basicConfig(level=20)
 
     # Initialise the aws clients and an http request pool
     s3 = boto3.client("s3")
@@ -205,7 +200,7 @@ if __name__ == "__main__":
     http = urllib3.PoolManager()
 
     # Start by checking the state of the queue
-    print(
+    logging.info(
         sqs_client.get_queue_attributes(
             QueueUrl=args["queue_url"],
             AttributeNames=[
@@ -216,7 +211,8 @@ if __name__ == "__main__":
     )
 
     # Start reading the queue and processing files
-    # TODO this should process requests in parallel based on the number of CPU available, or something clever like that
+    # TODO: this should process requests in parallel based on the number of CPU available, or
+    #       something clever like that
     while True:
         for message in get_new_events(
             args, sqs, maxEvents=5, reserveSeconds=300, maxWaitSeconds=20
@@ -225,22 +221,28 @@ if __name__ == "__main__":
 
             # We will have data events, and asset events, need to be handled separately
             if check_valid(args, payload, s3):
-                if post_files_to_humio(args, payload, s3, http):
-                    log(
-                        "Messages shipped to Humio",
-                        level="INFO",
-                    )
+                # print(message.body)
+                stats = post_files_to_humio(args, payload, s3, http)
+                if stats:
+                    timestamp = datetime.datetime.fromtimestamp(
+                        payload["timestamp"] / 1000.0
+                    ).strftime("%Y-%m-%d %H:%M:%S.%f")
+                    msg = f"{stats['files']} file(s) of {payload['fileCount']} shipped to Humio ({stats['bytes']} bytes of {payload['totalSize']}) from {timestamp}"
+                    if (
+                        stats["files"] == payload["fileCount"]
+                        and stats["bytes"] == payload["totalSize"]
+                    ):
+                        logging.info(msg)
+                    else:
+                        logging.error(msg)
                     message.delete()
             else:
                 # The queue item is referring to a batch that doesn't exist any more
                 # which probably means its too old and should be deleted from the queue
-                log(
-                    "Message deleted from queue as notification is too old and now empty, or for some other reason incomplete",
-                    level="WARN",
+                logging.warning(
+                    "Message deleted from queue as notification is too old and now empty, or for \
+some other reason incomplete"
                 )
                 message.delete()
-
-        # log("No elligible messages, sleeping for 5 mins", level="DEBUG")
-        # time.sleep(300)
 
     sys.exit()
