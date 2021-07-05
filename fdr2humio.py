@@ -5,9 +5,9 @@ import os
 import json
 import urllib.parse
 import argparse
+import datetime
 import urllib3
 import boto3
-import datetime
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)-8s %(message)s",
@@ -46,17 +46,15 @@ def pp_args(args):
     print("Running with the following arguments:")
     print()
     for arg in args:
-        argNamePadded = "{:<18}".format(arg)
+        arg_name_padded = "{:<18}".format(arg)
         if arg in ["aws_access_secret", "humio-token"]:
-            print("\t%s =>\t%s" % (argNamePadded, str("*" * len(str(args[arg])))))
+            print("\t%s =>\t%s" % (arg_name_padded, str("*" * len(str(args[arg])))))
         else:
-            print("\t%s =>\t%s" % (argNamePadded, str(args[arg])))
+            print("\t%s =>\t%s" % (arg_name_padded, str(args[arg])))
     print()
 
 
 def setup_args():
-    import argparse
-
     parser = argparse.ArgumentParser(
         description="This script is used to collect Falcon logs from S3, and send them to a Humio \
 instance."
@@ -137,7 +135,7 @@ def check_valid(args, payload, s3):
     # Confirm that the _SUCCESS file exists
     success_path = payload["pathPrefix"] + "/_SUCCESS"
     try:
-        obj = s3.head_object(Bucket=args["bucket"], Key=success_path)
+        s3.head_object(Bucket=args["bucket"], Key=success_path)
     except Exception as e:
         logging.debug(str(e))
         return False
