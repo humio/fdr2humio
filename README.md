@@ -1,5 +1,5 @@
 # fdr2humio
-Falcon Data Replica(ted) data to Humio
+Falcon Data Replica(ted) to Humio
 
 ```
 usage: fdr2humio.py [-h] [--aws-access-id AWS_ACCESS_ID] [--aws-access-secret AWS_ACCESS_SECRET] [--humio-batch HUMIO_BATCH] [--debug] [--tmpdir TMPDIR] bucket queue_url humio-host humio-token
