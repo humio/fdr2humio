@@ -8,6 +8,7 @@ import argparse
 import datetime
 import urllib3
 import boto3
+import botocore
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)-8s %(message)s",
@@ -136,9 +137,15 @@ def check_valid(args, payload, s3):
     success_path = payload["pathPrefix"] + "/_SUCCESS"
     try:
         s3.head_object(Bucket=args["bucket"], Key=success_path)
-    except Exception as e:
-        logging.debug(str(e))
-        return False
+    except botocore.exceptions.ClientError as e:
+        if (
+            str(e)
+            == "An error occurred (404) when calling the HeadObject operation: Not Found"
+        ):
+            return False
+        logging.warning(
+            f"Something unexpected happened when reading from the S3 bucket:\n\n{e}"
+        )
     return True
 
 
@@ -188,8 +195,9 @@ if __name__ == "__main__":
     # Echo to stdout so we can see the args in use if debug
     if args["debug"]:
         pp_args(args)
-        # Turn on the debugging log level
-        logging.basicConfig(level=20)
+        # Turn on the debugging log level, it is DETAILED
+        logger = logging.getLogger()
+        logger.setLevel(logging.DEBUG)
 
     # Initialise the aws clients and an http request pool
     s3 = boto3.client("s3")
@@ -238,8 +246,7 @@ if __name__ == "__main__":
                 # The queue item is referring to a batch that doesn't exist any more
                 # which probably means its too old and should be deleted from the queue
                 logging.warning(
-                    "Message deleted from queue as notification is too old and now empty, or for \
-some other reason incomplete"
+                    "Message deleted from queue as the location is not considered complete (no _SUCCESS file)."
                 )
                 message.delete()
 
