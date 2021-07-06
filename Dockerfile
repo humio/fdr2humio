@@ -21,3 +21,6 @@ RUN chmod +x run.sh
 
 # Run the app
 ENTRYPOINT [ "/fdr2humio/run.sh" ]
+
+# Associate the image to the source repo
+LABEL org.opencontainers.image.source="https://github.com/humio/fdr2humio"
