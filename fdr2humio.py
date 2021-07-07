@@ -69,7 +69,7 @@ instance."
         help='The S3 bucket from which to export. E.g "demo.humio.xyz"',
     )
     parser.add_argument(
-        "queue_url",
+        "queue-url",
         type=str,
         action="store",
         help="The SQS queue URL for notifiying new files",
@@ -123,7 +123,7 @@ instance."
 
 
 def get_new_events(args, sqs, maxEvents=1, maxWaitSeconds=10, reserveSeconds=300):
-    queue = sqs.Queue(args["queue_url"])
+    queue = sqs.Queue(args["queue-url"])
     return queue.receive_messages(
         MessageAttributeNames=["All"],
         WaitTimeSeconds=maxWaitSeconds,
@@ -208,7 +208,7 @@ if __name__ == "__main__":
     # Start by checking the state of the queue
     logging.info(
         sqs_client.get_queue_attributes(
-            QueueUrl=args["queue_url"],
+            QueueUrl=args["queue-url"],
             AttributeNames=[
                 "ApproximateNumberOfMessages",
                 "ApproximateNumberOfMessagesNotVisible",
