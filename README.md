@@ -2,7 +2,7 @@
 Falcon Data Replica(ted) to Humio
 
 ```
-usage: fdr2humio.py [-h] [--aws-access-id AWS_ACCESS_ID] [--aws-access-secret AWS_ACCESS_SECRET] [--humio-batch HUMIO_BATCH] [--debug] [--tmpdir TMPDIR] bucket queue-url humio-host humio-token
+usage: fdr2humio.py [-h] [--aws-access-id AWS_ACCESS_ID] [--aws-access-secret AWS_ACCESS_SECRET] [--debug] [--tmpdir TMPDIR] bucket queue-url humio-host humio-token
 
 This script is used to collect Falcon logs from S3, and send them to a Humio instance.
 
@@ -18,8 +18,6 @@ optional arguments:
                         The AWS access key ID (not implemented)
   --aws-access-secret AWS_ACCESS_SECRET
                         The AWS access key secret (not implemented)
-  --humio-batch HUMIO_BATCH
-                        Max events batch size for sending to Humio
   --debug               We do the debug?
   --tmpdir TMPDIR       The temp directory where the work will be done
 ```

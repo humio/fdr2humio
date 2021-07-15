@@ -38,6 +38,23 @@ def is_suitable_tempdir(path):
     raise argparse.ArgumentTypeError(msg)
 
 
+def is_valid_hostname(hostname):
+    parsed_uri = urllib.parse.urlparse(hostname)
+    if parsed_uri.scheme in ["http", "https"] and parsed_uri.netloc != None:
+        return f"{parsed_uri.scheme}://{parsed_uri.netloc}/"
+    else:
+        msg = (
+            "%s is not a valid Humio hostname. Must start with http:// or https://"
+            % hostname
+        )
+        raise argparse.ArgumentTypeError(msg)
+
+
+def clean_s3_bucket_ref(bucket):
+    bucket = bucket.lower()
+    return bucket.removeprefix("s3://").removesuffix("/data")
+
+
 def not_implemented():
     msg = "This argument is not currently supported."
     raise argparse.ArgumentTypeError(msg)
@@ -64,7 +81,7 @@ instance."
     # Details for the source bucket and access
     parser.add_argument(
         "bucket",
-        type=str,
+        type=clean_s3_bucket_ref,
         action="store",
         help='The S3 bucket from which to export. E.g "demo.humio.xyz"',
     )
@@ -90,20 +107,13 @@ instance."
     # Target system where the logs will be sent
     parser.add_argument(
         "humio-host",
-        type=str,
+        type=is_valid_hostname,
         action="store",
         default="https://cloud.humio.com:443/",
         help="The URL to the target Humio instance, including optional port number",
     )
     parser.add_argument(
         "humio-token", type=str, action="store", help="Ingest token for this input"
-    )
-    parser.add_argument(
-        "--humio-batch",
-        type=int,
-        action="store",
-        default=5000,
-        help="Max events batch size for sending to Humio",
     )
 
     # Are we going to do the debug?
