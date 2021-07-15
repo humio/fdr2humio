@@ -133,6 +133,10 @@ def get_new_events(args, sqs, maxEvents=1, maxWaitSeconds=10, reserveSeconds=300
 
 
 def check_valid(args, payload, s3):
+    # Confirm the bucket name matches (it should, but docs suggest it may not)
+    if args["bucket"] != payload["bucket"]:
+        return False
+
     # Confirm that the _SUCCESS file exists
     success_path = payload["pathPrefix"] + "/_SUCCESS"
     try:
@@ -192,9 +196,10 @@ if __name__ == "__main__":
     # We only need to do the argparse if we're running interactivley
     args = setup_args()
 
-    # Echo to stdout so we can see the args in use if debug
+    # Always pretty print the args when starting
+    pp_args(args)
+
     if args["debug"]:
-        pp_args(args)
         # Turn on the debugging log level, it is DETAILED
         logger = logging.getLogger()
         logger.setLevel(logging.DEBUG)
@@ -242,11 +247,17 @@ if __name__ == "__main__":
                     else:
                         logging.error(msg)
                     message.delete()
+            elif args["bucket"] != payload["bucket"]:
+                logging.error(
+                    "Message skipped because SQS message contains reference to file from another \
+bucket. This must be resolved or the queue will not be properly processed."
+                )
             else:
                 # The queue item is referring to a batch that doesn't exist any more
                 # which probably means its too old and should be deleted from the queue
                 logging.warning(
-                    "Message deleted from queue as the location is not considered complete (no _SUCCESS file)."
+                    "Message deleted from queue as the location is not considered complete \
+(no _SUCCESS file)."
                 )
                 message.delete()
 
