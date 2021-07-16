@@ -127,3 +127,7 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# Don't include test scripts or valid conf files
+test.sh
+fdr2humio.conf
