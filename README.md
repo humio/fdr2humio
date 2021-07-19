@@ -2,7 +2,7 @@
 Falcon Data Replica(ted) to Humio
 
 ```
-usage: fdr2humio.py [-h] [--aws-access-id AWS_ACCESS_ID] [--aws-access-secret AWS_ACCESS_SECRET] [--debug] [--tmpdir TMPDIR] bucket queue-url humio-host humio-token
+usage: fdr2humio.py [-h] [--aws-access-id AWS_ACCESS_ID] [--aws-access-secret AWS_ACCESS_SECRET] [--aws-region AWS_REGION] [--debug] [--tmpdir TMPDIR] bucket queue-url humio-host humio-token
 
 This script is used to collect Falcon logs from S3, and send them to a Humio instance.
 
@@ -15,9 +15,11 @@ positional arguments:
 optional arguments:
   -h, --help            show this help message and exit
   --aws-access-id AWS_ACCESS_ID
-                        The AWS access key ID (not implemented)
+                        The AWS access key ID
   --aws-access-secret AWS_ACCESS_SECRET
-                        The AWS access key secret (not implemented)
+                        The AWS access key secret
+  --aws-region AWS_REGION
+                        The AWS region (should match SQS queue region)
   --debug               We do the debug?
   --tmpdir TMPDIR       The temp directory where the work will be done
 ```
