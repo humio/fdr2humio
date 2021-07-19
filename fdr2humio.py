@@ -93,15 +93,21 @@ instance."
     )
     parser.add_argument(
         "--aws-access-id",
-        type=not_implemented,
+        type=str,
         action="store",
-        help="The AWS access key ID (not implemented)",
+        help="The AWS access key ID",
     )
     parser.add_argument(
         "--aws-access-secret",
-        type=not_implemented,
+        type=str,
         action="store",
-        help="The AWS access key secret (not implemented)",
+        help="The AWS access key secret",
+    )
+    parser.add_argument(
+        "--aws-region",
+        type=str,
+        action="store",
+        help="The AWS region (should match SQS queue region)",
     )
 
     # Target system where the logs will be sent
@@ -129,7 +135,19 @@ instance."
     )
 
     # Build the argument list
-    return vars(parser.parse_args())
+    arg_list = vars(parser.parse_args())
+
+    # If the AWS credentials are not set explictly, then read from the environemnt variables
+    # (if set) otherwise we do no special handling and fall back to the boto3 auto detection
+    if "aws_access_id" not in arg_list and "AWS_ACCESS_KEY_ID" in os.environ:
+        arg_list["aws_access_id"] = os.environ["AWS_ACCESS_KEY_ID"]
+    if "aws_access_secret" not in arg_list and "AWS_SECRET_ACCESS_KEY" in os.environ:
+        arg_list["aws_access_secret"] = os.environ["AWS_SECRET_ACCESS_KEY"]
+    if "aws_region" not in arg_list and "AWS_DEFAULT_REGION" in os.environ:
+        arg_list["aws_default_region"] = os.environ["AWS_DEFAULT_REGION"]
+
+    # Return the completed arguments
+    return arg_list
 
 
 def get_new_events(args, sqs, maxEvents=1, maxWaitSeconds=10, reserveSeconds=300):
@@ -215,9 +233,19 @@ if __name__ == "__main__":
         logger.setLevel(logging.DEBUG)
 
     # Initialise the aws clients and an http request pool
-    s3 = boto3.client("s3")
-    sqs_client = boto3.client("sqs")
-    sqs = boto3.resource("sqs")
+    aws_conf = {}
+    for aws_arg, local_arg in {
+        "aws_access_key_id": "aws_access_id",
+        "aws_secret_access_key": "aws_access_secret",
+        "region_name": "aws_region",
+    }.items():
+        if local_arg in args:
+            aws_conf[aws_arg] = args[local_arg]
+
+    # Setup the clients
+    s3 = boto3.client("s3", **aws_conf)
+    sqs_client = boto3.client("sqs", **aws_conf)
+    sqs = boto3.resource("sqs", **aws_conf)
     http = urllib3.PoolManager()
 
     # Start by checking the state of the queue
