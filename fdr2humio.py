@@ -259,8 +259,6 @@ if __name__ == "__main__":
         )
     )
 
-    sys.exit()
-
     # Start reading the queue and processing files
     # TODO: this should process requests in parallel based on the number of CPU available, or
     #       something clever like that
