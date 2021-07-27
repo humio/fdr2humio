@@ -264,7 +264,7 @@ if __name__ == "__main__":
     #       something clever like that
     while True:
         for message in get_new_events(
-            args, sqs, maxEvents=5, reserveSeconds=300, maxWaitSeconds=20
+            args, sqs, maxEvents=5, reserveSeconds=3600, maxWaitSeconds=20
         ):
             payload = json.loads(message.body)
 
