@@ -47,7 +47,7 @@ To deploy the container locally you must first pull the image:
 
 `docker pull ghcr.io/humio/fdr2humio:latest`
 
-Make a copy of the `fdr2humio.conf.example` file (available [here](https://raw.githubusercontent.com/humio/fdr2humio/main/fdr2humio.conf.example):
+Make a copy of the `fdr2humio.conf.example` file (available [here](https://raw.githubusercontent.com/humio/fdr2humio/main/fdr2humio.conf.example)):
 
 `cp fdr2humio.conf.example fdr2humio.conf` 
 
