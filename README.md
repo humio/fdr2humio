@@ -4,7 +4,7 @@
 
 Falcon Data Replica(ted) to Humio
 
-This project provides a simple way to move your Falcon data from the FDR service into a Humio instance, including shipping the data to Humio's cloud (SaaS) service. This utility should be combined with the corwdstrike/fdr package in the Humio marketplace, at a minimum you will want to use the parser provided in that package.
+This project provides a simple way to move your Falcon data from the FDR service into a Humio instance, including shipping the data to Humio's cloud (SaaS) service. This utility should be combined with the crowdstrike/fdr package in the Humio marketplace, at a minimum you will want to use the parser provided in that package.
 
 For more details on Falcon Data Replicator please see the documentation in your Falcon console under Support >  Documentation > Tools and Reference > Falcon Data Replicator.
 
