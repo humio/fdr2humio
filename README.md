@@ -37,6 +37,7 @@ NOTE: Because this tool is reading from an SQS queue it is safe to start and run
 
 ### Cloud Based Deployments
 
+[AWS Fargate](docs/deploy-in-aws-fargate.md)
 [Microsoft Azure](docs/deploy-in-azure.md)
 
 
