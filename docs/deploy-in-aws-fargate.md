@@ -36,8 +36,18 @@ The fdr2humio docker container is ephemeral (i.e. needs no persistent data stora
 	5. Click Update
 
 4. Next | Next
-	1. Cluster Name: default
+	1. Cluster Name: default	
+
 5. Next | Create
+
+	![img](img/Fargate4.png)
+	
+
 ## Validate and Monitor FDR2HUMIO container operations
 1. After the Service is deployed, this will take a few minutes, click "View Service"
+
+	![img](img/Fargate5.png)
+
 2. Open the Logs Tab and check that logs are being shipped to Humio
+
+	![img](img/Fargate6.png)
