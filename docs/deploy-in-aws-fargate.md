@@ -10,10 +10,16 @@ The fdr2humio docker container is ephemeral (i.e. needs no persistent data stora
 
 1. https://us-east-2.console.aws.amazon.com/ecs/home?region=us-east-2#/getStarted
 2. Click on "Get Started"
-3. Custom | Configure
+
+	![img](img/Fargate1.png)
+
+4. Custom | Configure
 	1. Container Name: FDR2HUMIO
 	2. Image: ghcr.io/humio/fdr2humio:latest
 	3. Soft Limit: 128Mb
+
+		![img](img/Fargate2.png)
+
 	4. Advanced Container Configuration | Environment | Environment Variables
 		1. AWS_ACCESS_KEY_ID=XXX
 		2. AWS_SECRET_ACCESS_KEY=XXX
@@ -24,6 +30,9 @@ The fdr2humio docker container is ephemeral (i.e. needs no persistent data stora
 		7. F2H_HUMIO_TOKEN=XXX
 		8. F2H_DEBUG=false
 			***NOTE: the default region must match the SQS queue region***
+			
+			![img](img/Fargate3.png)
+			
 	5. Click Update
 
 4. Next | Next
