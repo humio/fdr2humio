@@ -29,9 +29,10 @@ The fdr2humio docker container is ephemeral (i.e. needs no persistent data stora
 		6. F2H_HUMIO_URL=https://cloud.humio.com/
 		7. F2H_HUMIO_TOKEN=XXX
 		8. F2H_DEBUG=false
-			***NOTE: the default region must match the SQS queue region***
+		
+		***NOTE: the default region must match the SQS queue region***
 			
-			![img](img/Fargate3.png)
+		![img](img/Fargate3.png)
 			
 	5. Click Update
 
