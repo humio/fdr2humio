@@ -131,3 +131,6 @@ dmypy.json
 # Don't include test scripts or valid conf files
 test.sh
 fdr2humio.conf
+
+MacOS Nonsense
+.DS_Store
