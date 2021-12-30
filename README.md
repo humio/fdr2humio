@@ -4,7 +4,7 @@
 
 Falcon Data Replica(ted) to Humio
 
-This project provides a simple way to move your Falcon data from the FDR service into a Humio instance, including shipping the data to Humio's cloud (SaaS) service. This utility should be combined with the corwdstrike/fdr package in the Humio marketplace, at a minimum you will want to use the parser provided in that package.
+This project provides a simple way to move your Falcon data from the FDR service into a Humio instance, including shipping the data to Humio's cloud (SaaS) service. This utility should be combined with the crowdstrike/fdr package in the Humio marketplace, at a minimum you will want to use the parser provided in that package.
 
 For more details on Falcon Data Replicator please see the documentation in your Falcon console under Support >  Documentation > Tools and Reference > Falcon Data Replicator.
 
@@ -37,7 +37,8 @@ NOTE: Because this tool is reading from an SQS queue it is safe to start and run
 
 ### Cloud Based Deployments
 
-[Microsoft Azure](docs/deploy-in-azure.md)
+* [AWS Fargate](docs/deploy-in-aws-fargate.md)
+* [Microsoft Azure](docs/deploy-in-azure.md)
 
 
 
@@ -47,7 +48,7 @@ To deploy the container locally you must first pull the image:
 
 `docker pull ghcr.io/humio/fdr2humio:latest`
 
-Make a copy of the `fdr2humio.conf.example` file (available [here](https://raw.githubusercontent.com/humio/fdr2humio/main/fdr2humio.conf.example):
+Make a copy of the `fdr2humio.conf.example` file (available [here](https://raw.githubusercontent.com/humio/fdr2humio/main/fdr2humio.conf.example)):
 
 `cp fdr2humio.conf.example fdr2humio.conf` 
 
