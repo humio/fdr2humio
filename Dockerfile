@@ -1,6 +1,9 @@
 # This is the base image
 FROM python:3-alpine
 
+# Update expat for CVE-2021-46143
+RUN apk update expat
+
 # Create a directory for the app
 RUN mkdir /fdr2humio
 
