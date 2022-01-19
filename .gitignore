@@ -132,5 +132,5 @@ dmypy.json
 test.sh
 fdr2humio.conf
 
-MacOS Nonsense
+# MacOS Nonsense
 .DS_Store
