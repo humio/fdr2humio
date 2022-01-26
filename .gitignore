@@ -134,3 +134,6 @@ fdr2humio.conf
 
 # MacOS Nonsense
 .DS_Store
+
+# PyCharm
+.idea/
