@@ -7,6 +7,8 @@ import signal
 import sys
 import tempfile
 import urllib.parse
+from hashlib import md5
+
 
 import boto3
 import botocore
@@ -149,6 +151,13 @@ instance."
     # Are we going to do the debug?
     parser.add_argument("--debug", action="store_true", help="We do the debug?")
 
+    #  MD5 validation of downloaded files (will still verify file size)
+    parser.add_argument(
+        "--checksum",
+        action="store_true",
+        help="If set, the MD5 sum is verified",
+    )
+
     # Where can we do our workings
     parser.add_argument(
         "--tmpdir",
@@ -221,24 +230,40 @@ def post_files_to_humio(args, payload, s3, http):
             # Download the source file from S3
             s3.download_file(args["bucket"], asset["path"], local_file_path)
 
-            # TODO: Check the checksum
-
-            # TODO: check the size!
-            processed["files"] += 1
-            processed["bytes"] += os.path.getsize(local_file_path)
+            # TODO: check if space available on disk!
 
             # POST to Humio HEC Raw w/ compression
             with open(local_file_path, "rb") as f:
-                r = http.request(
-                    "POST",
-                    humio_url(args),
-                    body=f.read(),
-                    headers=humio_headers(args),
-                )
+                data = f.read()
 
-                # TODO: Better error handling needed here as we may partially process a message
-                if r.status != 200:
+            # TODO: Better error handling when MD5 have mismatch
+            if args["checksum"]:
+                local_file_md5 = md5(data).hexdigest()
+                if local_file_md5 != asset["checksum"]:
+                    logging.debug(
+                        f"MD5 checksum ({local_file_md5}) of file \"{asset['path']}\" "
+                        f'matches with file on-disk "{local_file_path}".'
+                    )
+                else:
+                    logging.error(
+                        f"MD5 mismatch {asset['checksum']} ({asset['path']}) doesn't match local file "
+                        f"MD5 {local_file_md5} ({local_file_path})."
+                    )
                     return False
+
+            r = http.request(
+                "POST",
+                humio_url(args),
+                body=data,
+                headers=humio_headers(args),
+            )
+
+            processed["files"] += 1
+            processed["bytes"] += os.path.getsize(local_file_path)
+
+            # TODO: Better error handling needed here as we may partially process a message
+            if r.status != 200:
+                return False
 
     # Everything sent as expected
     return processed
