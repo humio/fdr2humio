@@ -1,20 +1,38 @@
-import sys
-import tempfile
-import logging
-import os
-import json
-import urllib.parse
 import argparse
 import datetime
-import urllib3
+import json
+import logging
+import os
+import signal
+import sys
+import tempfile
+import urllib.parse
+from hashlib import md5
+
 import boto3
 import botocore
+import urllib3
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)-8s %(message)s",
     level=logging.INFO,
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+
+
+# Class found here https://stackoverflow.com/a/57649638 for handling graceful shutdown
+class GracefulExit:
+    def __init__(self):
+        self.state = False
+        signal.signal(signal.SIGINT, self.change_state)
+
+    def change_state(self, signum, frame):
+        print("Gracefully shutting down...")
+        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        self.state = True
+
+    def exit(self):
+        return self.state
 
 
 def humio_url(args):
@@ -44,8 +62,8 @@ def is_valid_hostname(hostname):
         return f"{parsed_uri.scheme}://{parsed_uri.netloc}/"
     else:
         msg = (
-            "%s is not a valid Humio hostname. Must start with http:// or https://"
-            % hostname
+                "%s is not a valid Humio hostname. Must start with http:// or https://"
+                % hostname
         )
         raise argparse.ArgumentTypeError(msg)
 
@@ -74,8 +92,7 @@ def pp_args(args):
 
 def setup_args():
     parser = argparse.ArgumentParser(
-        description="This script is used to collect Falcon logs from S3, and send them to a Humio \
-instance."
+        description="This script is used to collect Falcon logs from S3, and send them to a Humio instance."
     )
 
     # Details for the source bucket and access
@@ -125,6 +142,13 @@ instance."
     # Are we going to do the debug?
     parser.add_argument("--debug", action="store_true", help="We do the debug?")
 
+    # Skip MD5 validation of downloaded files (will still verify file size)
+    parser.add_argument(
+        "--skip-checksum",
+        action="store_true",
+        help="If set, the md5 check of downloaded files is skipped",
+    )
+
     # Where can we do our workings
     parser.add_argument(
         "--tmpdir",
@@ -170,14 +194,9 @@ def check_valid(args, payload, s3):
     try:
         s3.head_object(Bucket=args["bucket"], Key=success_path)
     except botocore.exceptions.ClientError as e:
-        if (
-            str(e)
-            == "An error occurred (404) when calling the HeadObject operation: Not Found"
-        ):
+        if str(e) == "An error occurred (404) when calling the HeadObject operation: Not Found":
             return False
-        logging.warning(
-            f"Something unexpected happened when reading from the S3 bucket:\n\n{e}"
-        )
+        logging.warning(f"Something unexpected happened when reading from the S3 bucket:\n\n{e}")
     return True
 
 
@@ -197,18 +216,37 @@ def post_files_to_humio(args, payload, s3, http):
             # Download the source file from S3
             s3.download_file(args["bucket"], asset["path"], local_file_path)
 
-            # TODO: Check the checksum
-
-            # TODO: check the size!
-            processed["files"] += 1
-            processed["bytes"] += os.path.getsize(local_file_path)
-
             # POST to Humio HEC Raw w/ compression
             with open(local_file_path, "rb") as f:
+
+                data = f.read()
+
+                local_file_size = os.path.getsize(local_file_path)
+
+                # TODO: Better error handling when MD5/filesize have mismatch
+                if args['skip_checksum'] is False:
+                    local_file_md5 = md5(data).hexdigest()
+                    if local_file_md5 == asset['checksum']:
+                        logging.debug(f"MD5 checksum ({local_file_md5}) of file \"{asset['path']}\" "
+                                      f"matches with file on-disk \"{local_file_path}\".")
+                    else:
+                        logging.error(f"MD5 mismatch {asset['checksum']} ({asset['path']}) doesn't match local file "
+                                      f"MD5 {local_file_md5} ({local_file_path}).")
+                        return False
+
+                if local_file_size != asset['size']:
+                    logging.error(f"File size mismatch in local file and S3. "
+                                  f"Local file of {local_file_size} bytes in {local_file_path}. "
+                                  f"Remote file of {asset['size']} bytes in {asset['path']}")
+                    return False
+
+                processed["files"] += 1
+                processed["bytes"] += local_file_size
+
                 r = http.request(
                     "POST",
                     humio_url(args),
-                    body=f.read(),
+                    body=data,
                     headers=humio_headers(args),
                 )
 
@@ -221,7 +259,7 @@ def post_files_to_humio(args, payload, s3, http):
 
 
 if __name__ == "__main__":
-    # We only need to do the argparse if we're running interactivley
+    # We only need to do the argparse if we're running interactively
     args = setup_args()
 
     # Always pretty print the args when starting
@@ -262,10 +300,9 @@ if __name__ == "__main__":
     # Start reading the queue and processing files
     # TODO: this should process requests in parallel based on the number of CPU available, or
     #       something clever like that
+    flag = GracefulExit()
     while True:
-        for message in get_new_events(
-            args, sqs, maxEvents=5, reserveSeconds=3600, maxWaitSeconds=20
-        ):
+        for message in get_new_events(args, sqs, maxEvents=5, reserveSeconds=3600, maxWaitSeconds=20):
             payload = json.loads(message.body)
 
             # We will have data events, and asset events, need to be handled separately
@@ -273,30 +310,33 @@ if __name__ == "__main__":
                 # print(message.body)
                 stats = post_files_to_humio(args, payload, s3, http)
                 if stats:
-                    timestamp = datetime.datetime.fromtimestamp(
-                        payload["timestamp"] / 1000.0
-                    ).strftime("%Y-%m-%d %H:%M:%S.%f")
-                    msg = f"{stats['files']} file(s) of {payload['fileCount']} shipped to Humio ({stats['bytes']} bytes of {payload['totalSize']}) from {timestamp}"
-                    if (
-                        stats["files"] == payload["fileCount"]
-                        and stats["bytes"] == payload["totalSize"]
-                    ):
+                    timestamp = datetime.datetime.fromtimestamp(payload["timestamp"] / 1000.0)\
+                        .strftime("%Y-%m-%d %H:%M:%S.%f")
+
+                    msg = (f"{stats['files']} file(s) of {payload['fileCount']} shipped to Humio "
+                           f"({stats['bytes']} bytes of {payload['totalSize']}) from {timestamp}")
+
+                    if stats["files"] == payload["fileCount"] and stats["bytes"] == payload["totalSize"]:
                         logging.info(msg)
+
                     else:
                         logging.error(msg)
+
                     message.delete()
+
             elif args["bucket"] != payload["bucket"]:
                 logging.error(
-                    "Message skipped because SQS message contains reference to file from another \
-bucket. This must be resolved or the queue will not be properly processed."
+                    "Message skipped because SQS message contains reference to file from another bucket. "
+                    "This must be resolved or the queue will not be properly processed."
                 )
             else:
                 # The queue item is referring to a batch that doesn't exist any more
                 # which probably means its too old and should be deleted from the queue
                 logging.warning(
-                    "Message deleted from queue as the location is not considered complete \
-(no _SUCCESS file)."
+                    "Message deleted from queue as the location is not considered complete (no _SUCCESS file)."
                 )
+
                 message.delete()
 
-    sys.exit()
+        if flag.exit():
+            sys.exit()
