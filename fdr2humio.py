@@ -82,15 +82,18 @@ def not_implemented():
 
 
 def pp_args(args):
-    print("Running with the following arguments:")
-    print()
+    print("Running with the following arguments:", flush=True)
+    print(flush=True)
     for arg in args:
         arg_name_padded = "{:<18}".format(arg)
         if arg in ["aws_access_secret", "humio-token"]:
-            print("\t%s =>\t%s" % (arg_name_padded, str("*" * len(str(args[arg])))))
+            print(
+                "\t%s =>\t%s" % (arg_name_padded, str("*" * len(str(args[arg])))),
+                flush=True,
+            )
         else:
-            print("\t%s =>\t%s" % (arg_name_padded, str(args[arg])))
-    print()
+            print("\t%s =>\t%s" % (arg_name_padded, str(args[arg])), flush=True)
+    print(flush=True)
 
 
 def setup_args():
