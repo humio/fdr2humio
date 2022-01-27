@@ -23,11 +23,15 @@ logging.basicConfig(
 class GracefulExit:
     def __init__(self):
         self.state = False
+        # Ctrl-C sends SIGINT
         signal.signal(signal.SIGINT, self.change_state)
+        # Docker sends SIGTERM
+        signal.signal(signal.SIGTERM, self.change_state)
 
     def change_state(self, signum, frame):
-        print("Gracefully shutting down...")
-        signal.signal(signal.SIGINT, signal.SIG_DFL)
+        logging.info(f"Gracefully shutting down ({signal.Signals(signum).name})...")
+        # Returnt the handler back to the default in case of another call
+        signal.signal(signum, signal.SIG_DFL)
         self.state = True
 
     def exit(self):
@@ -318,6 +322,9 @@ if __name__ == "__main__":
                     "Message deleted from queue as the location is not considered complete (no _SUCCESS file)."
                 )
                 message.delete()
+
+        # Have we been asked to terminiate the process?
+        logging.debug(f"exit={flag.exit()}")
 
         if flag.exit():
             sys.exit()
