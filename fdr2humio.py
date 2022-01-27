@@ -9,7 +9,6 @@ import tempfile
 import urllib.parse
 from hashlib import md5
 
-
 import boto3
 import botocore
 import urllib3
@@ -67,8 +66,8 @@ def is_valid_hostname(hostname):
         return f"{parsed_uri.scheme}://{parsed_uri.netloc}/"
     else:
         msg = (
-            "%s is not a valid Humio hostname. Must start with http:// or https://"
-            % hostname
+                "%s is not a valid Humio hostname. Must start with http:// or https://"
+                % hostname
         )
         raise argparse.ArgumentTypeError(msg)
 
@@ -204,8 +203,8 @@ def check_valid(args, payload, s3):
         s3.head_object(Bucket=args["bucket"], Key=success_path)
     except botocore.exceptions.ClientError as e:
         if (
-            str(e)
-            == "An error occurred (404) when calling the HeadObject operation: Not Found"
+                str(e)
+                == "An error occurred (404) when calling the HeadObject operation: Not Found"
         ):
             return False
         logging.warning(
@@ -270,7 +269,7 @@ def post_files_to_humio(args, payload, s3, http):
 
 
 if __name__ == "__main__":
-    # We only need to do the argparse if we're running interactivley
+    # We only need to do the argparse if we're running interactively
     args = setup_args()
 
     # Always pretty print the args when starting
@@ -314,7 +313,7 @@ if __name__ == "__main__":
     flag = GracefulExit()
     while True:
         for message in get_new_events(
-            args, sqs, maxEvents=5, reserveSeconds=3600, maxWaitSeconds=20
+                args, sqs, maxEvents=5, reserveSeconds=3600, maxWaitSeconds=20
         ):
             payload = json.loads(message.body)
 
@@ -331,8 +330,8 @@ if __name__ == "__main__":
                         f"bytes of {payload['totalSize']}) from {timestamp} "
                     )
                     if (
-                        stats["files"] == payload["fileCount"]
-                        and stats["bytes"] == payload["totalSize"]
+                            stats["files"] == payload["fileCount"]
+                            and stats["bytes"] == payload["totalSize"]
                     ):
                         logging.info(msg)
                     else:
