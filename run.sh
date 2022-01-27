@@ -7,8 +7,9 @@ if [[ -z $F2H_SQS_URL || -z $F2H_S3_BUCKET || -z $F2H_HUMIO_URL || -z F2H_HUMIO_
 fi
 
 # Now start the python script with the right variables, with or without debug
+# we use `exec` here to make sure we run as PID 1 and capture signals
 if [[ -z "$F2H_DEBUG" || ${F2H_DEBUG} == "false" ]]; then
-	python3 fdr2humio.py ${F2H_S3_BUCKET} ${F2H_SQS_URL} ${F2H_HUMIO_URL} ${F2H_HUMIO_TOKEN} 
+	exec python3 fdr2humio.py ${F2H_S3_BUCKET} ${F2H_SQS_URL} ${F2H_HUMIO_URL} ${F2H_HUMIO_TOKEN}
 else
-	python3 fdr2humio.py ${F2H_S3_BUCKET} ${F2H_SQS_URL} ${F2H_HUMIO_URL} ${F2H_HUMIO_TOKEN} --debug
+	exec python3 fdr2humio.py ${F2H_S3_BUCKET} ${F2H_SQS_URL} ${F2H_HUMIO_URL} ${F2H_HUMIO_TOKEN} --debug
 fi

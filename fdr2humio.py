@@ -1,20 +1,41 @@
-import sys
-import tempfile
-import logging
-import os
-import json
-import urllib.parse
 import argparse
 import datetime
-import urllib3
+import json
+import logging
+import os
+import signal
+import sys
+import tempfile
+import urllib.parse
+
 import boto3
 import botocore
+import urllib3
 
 logging.basicConfig(
     format="%(asctime)s %(levelname)-8s %(message)s",
     level=logging.INFO,
     datefmt="%Y-%m-%d %H:%M:%S",
 )
+
+
+# Class found here https://stackoverflow.com/a/57649638 for handling graceful shutdown
+class GracefulExit:
+    def __init__(self):
+        self.state = False
+        # Ctrl-C sends SIGINT
+        signal.signal(signal.SIGINT, self.change_state)
+        # Docker sends SIGTERM
+        signal.signal(signal.SIGTERM, self.change_state)
+
+    def change_state(self, signum, frame):
+        logging.info(f"Gracefully shutting down ({signal.Signals(signum).name})...")
+        # Returnt the handler back to the default in case of another call
+        signal.signal(signum, signal.SIG_DFL)
+        self.state = True
+
+    def exit(self):
+        return self.state
 
 
 def humio_url(args):
@@ -40,7 +61,7 @@ def is_suitable_tempdir(path):
 
 def is_valid_hostname(hostname):
     parsed_uri = urllib.parse.urlparse(hostname)
-    if parsed_uri.scheme in ["http", "https"] and parsed_uri.netloc != None:
+    if parsed_uri.scheme in ["http", "https"] and parsed_uri.netloc is not None:
         return f"{parsed_uri.scheme}://{parsed_uri.netloc}/"
     else:
         msg = (
@@ -262,6 +283,7 @@ if __name__ == "__main__":
     # Start reading the queue and processing files
     # TODO: this should process requests in parallel based on the number of CPU available, or
     #       something clever like that
+    flag = GracefulExit()
     while True:
         for message in get_new_events(
             args, sqs, maxEvents=5, reserveSeconds=3600, maxWaitSeconds=20
@@ -276,7 +298,10 @@ if __name__ == "__main__":
                     timestamp = datetime.datetime.fromtimestamp(
                         payload["timestamp"] / 1000.0
                     ).strftime("%Y-%m-%d %H:%M:%S.%f")
-                    msg = f"{stats['files']} file(s) of {payload['fileCount']} shipped to Humio ({stats['bytes']} bytes of {payload['totalSize']}) from {timestamp}"
+                    msg = (
+                        f"{stats['files']} file(s) of {payload['fileCount']} shipped to Humio ({stats['bytes']} "
+                        f"bytes of {payload['totalSize']}) from {timestamp} "
+                    )
                     if (
                         stats["files"] == payload["fileCount"]
                         and stats["bytes"] == payload["totalSize"]
@@ -287,16 +312,19 @@ if __name__ == "__main__":
                     message.delete()
             elif args["bucket"] != payload["bucket"]:
                 logging.error(
-                    "Message skipped because SQS message contains reference to file from another \
-bucket. This must be resolved or the queue will not be properly processed."
+                    "Message skipped because SQS message contains reference to file from another bucket. This must be "
+                    "resolved or the queue will not be properly processed. "
                 )
             else:
                 # The queue item is referring to a batch that doesn't exist any more
                 # which probably means its too old and should be deleted from the queue
                 logging.warning(
-                    "Message deleted from queue as the location is not considered complete \
-(no _SUCCESS file)."
+                    "Message deleted from queue as the location is not considered complete (no _SUCCESS file)."
                 )
                 message.delete()
 
-    sys.exit()
+        # Have we been asked to terminiate the process?
+        logging.debug(f"exit={flag.exit()}")
+
+        if flag.exit():
+            sys.exit()
