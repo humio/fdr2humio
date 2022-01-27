@@ -139,3 +139,8 @@ cd fdr2humio
 docker build --tag YOUR_NAME/fdr2humio:latest .
 ```
 
+
+## Restarting the container
+
+The container attempts to perform a graceful shutdown when asked, but it is possible that a race condition means the contents of a message have been sent to Humio and the message has not been removed from the queue. This should only happen if fdr2humio is processing a very large file that takes longer to send than the container shutdown timeout AND that shutdown is called at exactly that moment.
+
