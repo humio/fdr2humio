@@ -91,6 +91,7 @@ optional arguments:
   --aws-region AWS_REGION
                         The AWS region (should match SQS queue region)
   --debug               We do the debug?
+  --checksum            If set, the MD5 sum is verified
   --tmpdir TMPDIR       The temp directory where the work will be done
 ```
 
