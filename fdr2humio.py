@@ -65,7 +65,7 @@ def is_valid_hostname(hostname):
         return f"{parsed_uri.scheme}://{parsed_uri.netloc}/"
     else:
         msg = (
-            "%s is not a valid Humio hostname. Must start with http:// or https://"
+            "%s is not a valid hostname. Must start with http:// or https://"
             % hostname
         )
         raise argparse.ArgumentTypeError(msg)
@@ -156,6 +156,22 @@ instance."
         action="store",
         default="/tmp",
         help="The temp directory where the work will be done",
+    )
+
+    # Enable/Disable HTTP Proxy
+    parser.add_argument(
+        "--http-proxy",
+        action="store_true",
+        help="Enable HTTP Proxy Access",
+    )
+
+    # HTTP Proxy URL
+    parser.add_argument(
+        "--http-proxy-url",
+        type=str,
+        action="store",
+        default="[proxy-hostname]",
+        help="hostname of the proxy server",
     )
 
     # Build the argument list
@@ -262,9 +278,14 @@ if __name__ == "__main__":
         "aws_access_key_id": "aws_access_id",
         "aws_secret_access_key": "aws_access_secret",
         "region_name": "aws_region",
+        #"proxies" : {'https': 'foo.bar:3128'},
     }.items():
         if local_arg in args:
             aws_conf[aws_arg] = args[local_arg]
+    #Add Proxy Settings if required
+    if args["http_proxy"]:
+        aws_conf["config"]=botocore.config.Config(proxies={'https': args["http_proxy_url"]})
+
 
     # Setup the clients
     s3 = boto3.client("s3", **aws_conf)
